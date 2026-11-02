@@ -1,5 +1,7 @@
 "use client";
 
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { useEffect, useRef, useState } from "react";
 
 type Message = {
@@ -22,9 +24,11 @@ export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [ready, setReady] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  // LOAD SAVED CHATS
   useEffect(() => {
     const saved = localStorage.getItem("likely-chats");
 
@@ -40,12 +44,29 @@ export default function Home() {
     setReady(true);
   }, []);
 
+  // SAVE CHATS
   useEffect(() => {
     if (ready) {
       localStorage.setItem("likely-chats", JSON.stringify(chats));
     }
   }, [chats, ready]);
 
+  // COPY AI RESPONSE
+  async function copyResponse(content: string, index: number) {
+    try {
+      await navigator.clipboard.writeText(content);
+
+      setCopiedIndex(index);
+
+      setTimeout(() => {
+        setCopiedIndex(null);
+      }, 2000);
+    } catch {
+      alert("Unable to copy. Please try again.");
+    }
+  }
+
+  // CREATE NEW CHAT
   function createNewChat() {
     setCurrentId("");
     setMessages([]);
@@ -54,15 +75,15 @@ export default function Home() {
     inputRef.current?.focus();
   }
 
+  // OPEN CHAT HISTORY
   function openChat(chat: Chat) {
-  console.log("Opening chat:", chat);
+    setCurrentId(chat.id);
+    setMessages(chat.messages);
+    setQuestion("");
+    setEditingIndex(null);
+  }
 
-  setCurrentId(chat.id);
-  setMessages(chat.messages);
-  setQuestion("");
-  setEditingIndex(null);
-}
-
+  // DELETE CHAT
   function deleteChat(id: string) {
     const updated = chats.filter((chat) => chat.id !== id);
     setChats(updated);
@@ -72,12 +93,14 @@ export default function Home() {
     }
   }
 
+  // EDIT PREVIOUS MESSAGE
   function editMessage(index: number) {
     setQuestion(messages[index].content);
     setEditingIndex(index);
     inputRef.current?.focus();
   }
 
+  // SEND MESSAGE
   async function handleSend() {
     const text = question.trim();
 
@@ -177,8 +200,11 @@ export default function Home() {
 
       {/* SIDEBAR */}
 
-      <aside className={`history-sidebar ${sidebarOpen ? "sidebar-open" : "sidebar-closed"}`}>
-
+      <aside
+        className={`history-sidebar ${
+          sidebarOpen ? "sidebar-open" : "sidebar-closed"
+        }`}
+      >
         <div className="sidebar-top">
           <span className="brand">likely.</span>
 
@@ -201,7 +227,9 @@ export default function Home() {
           {chats.map((chat) => (
             <div
               key={chat.id}
-              className={`history-item ${currentId === chat.id ? "active" : ""}`}
+              className={`history-item ${
+                currentId === chat.id ? "active" : ""
+              }`}
             >
               <button
                 className="history-title"
@@ -224,7 +252,6 @@ export default function Home() {
         <div className="sidebar-bottom">
           Your AI research partner
         </div>
-
       </aside>
 
       {/* MAIN CHAT */}
@@ -255,13 +282,11 @@ export default function Home() {
           {messages.length === 0 ? (
 
             <div className="welcome">
-
               <h1>What would you like to explore?</h1>
 
               <p>
                 Research, learn, create and discover with Likely.
               </p>
-
             </div>
 
           ) : (
@@ -281,29 +306,57 @@ export default function Home() {
                   <div className="message-content">
 
                     {message.role === "assistant" && (
-                       <div className="message-label">Likely</div>
+                      <div className="message-label">
+                        Likely
+                      </div>
                     )}
 
+                    {/* MESSAGE TEXT */}
+
                     <div className="message-text">
-                      {message.content}
+                      {message.role === "assistant" ? (
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {message.content}
+                        </ReactMarkdown>
+                      ) : (
+                        message.content
+                      )}
                     </div>
 
+                    {/* COPY BUTTON */}
+
+                    {message.role === "assistant" && (
+                      <button
+                        className="copy-button"
+                        onClick={() =>
+                          copyResponse(message.content, index)
+                        }
+                        title="Copy entire response"
+                      >
+                        {copiedIndex === index
+                          ? "✓ Copied!"
+                          : "📋 Copy"}
+                      </button>
+                    )}
+
+                    {/* EDIT USER MESSAGE */}
+
                     {message.role === "user" && (
-                     <button
-                      className="edit-message"
-                      onClick={() => editMessage(index)}
-                      title="Edit message"
-                      aria-label="Edit message"
-                     >
-                      ✎
-                     </button>
+                      <button
+                        className="edit-message"
+                        onClick={() => editMessage(index)}
+                        title="Edit message"
+                        aria-label="Edit message"
+                      >
+                        ✎
+                      </button>
                     )}
 
                   </div>
-
                 </div>
-
               ))}
+
+              {/* THINKING ANIMATION */}
 
               {loading && (
                 <div className="thinking-dog">
@@ -317,7 +370,6 @@ export default function Home() {
               )}
 
             </div>
-
           )}
 
         </section>
@@ -385,7 +437,6 @@ export default function Home() {
               </button>
 
             </div>
-
           </div>
 
           <p className="composer-footer">
