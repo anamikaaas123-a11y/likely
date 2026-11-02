@@ -9,7 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@huggingface/inference": "^4.13.32",
+    "jspdf": "^4.2.1",
     "next": "16.4.3",
+    "openai": "^7.43.0",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
